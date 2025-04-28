@@ -1,5 +1,5 @@
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { AxiosInstance } from "axios";
+import axios, { AxiosInstance } from "axios";
 
 // Define the type for parameters expected by callMagentoApi
 export interface CallApiParams {
@@ -17,18 +17,32 @@ export async function callMagentoApi(axiosInstance: AxiosInstance, request: Call
         }
     }
 
-    const response = await axiosInstance.request({
-        method: request.method,
-        url: request.path,
-        params: request.queryParams,
-        data: request.body ? JSON.parse(request.body) : undefined,
-    });
+    let responseText = '';
+    try {
+        const response = await axiosInstance.request({
+            method: request.method,
+            url: request.path,
+            params: request.queryParams,
+            data: request.body ? JSON.parse(request.body) : undefined,
+        });
+        responseText = response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            if (error.response) {
+                responseText = JSON.stringify(error.response.data);
+            } else {
+                responseText = error.message;
+            }
+        } else {
+            responseText = (error as Error).message;
+        }
+    }
 
     return {
         content: [
             {
                 type: "text",
-                text: JSON.stringify(response.data, null, 2),
+                text: typeof responseText !== 'string' ? JSON.stringify(responseText) : responseText,
             },
         ],
     };

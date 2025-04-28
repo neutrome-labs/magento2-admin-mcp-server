@@ -21,6 +21,7 @@ for (const [key, value] of Object.entries(process.env)) {
     }
 }
 
+const MCP_TITLE = process.env.MCP_TITLE || '';
 const MAGENTO_BASE_URL = process.env.MAGENTO_BASE_URL;
 const MAGENTO_INTEGRATION_TOKEN = process.env.MAGENTO_INTEGRATION_TOKEN;
 const FEATURED_APIS = featuredApis;
@@ -39,8 +40,8 @@ const axiosInstance = axios.create({
 const schema = await fetchMagentoApiSchema(axiosInstance);
 
 const server = new McpServer({
-    name: "Magento 2",
-    version: "2.0.0"
+    name: (MCP_TITLE + " Magento 2").trim(),
+    version: "2.1.0"
 });
 
 for (const [name, api] of Object.entries(FEATURED_APIS)) {
@@ -54,6 +55,16 @@ for (const [name, api] of Object.entries(FEATURED_APIS)) {
             const paramName = param.replace(/{|}/g, '');
             toolSignature[paramName] = z.string();
         }
+    }
+
+    if (!schema.paths[path]) {
+        console.error(`Path ${path} not found in schema. Skpping featured API tool export`);
+        continue;
+    }
+
+    if (!schema.paths[path][method]) {
+        console.error(`Method ${method} not found for path ${path} in schema. Skpping featured API tool export`);
+        continue;
     }
 
     for (const params of schema.paths[path][method].parameters ?? []) {
