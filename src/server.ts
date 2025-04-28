@@ -3,8 +3,8 @@ import https from 'https'; // Import https module
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { fetchMagentoApiSchema, MagentoApiSchema } from './swagger';
-import { callMagentoApi } from './tools';
+import { fetchMagentoApiSchema, MagentoApiSchema } from './swagger.js'; // Added .js extension
+import { callMagentoApi, CallApiParams } from './tools.js'; // Added .js extension and CallApiParams import
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -80,8 +80,8 @@ for (const [name, api] of Object.entries(FEATURED_APIS)) {
     server.tool(
         name,
         toolSignature,
-        async (params) => await callMagentoApi(axiosInstance, {
-            method,
+        async (params: CallApiParams) => await callMagentoApi(axiosInstance, {
+            method: method as CallApiParams['method'], // Assert type here
             path,
             queryParams: method !== 'post' ? JSON.parse(JSON.stringify(params)) : null,
             body: method === 'post' ? JSON.stringify(params) : null,
@@ -93,9 +93,16 @@ server.tool(
     "lvl1_rest__get_api_definitions",
     {},
     () => {
-        const definitions: MagentoApiSchema = {
-            ...schema,
-            paths: {},
+        // Explicitly copy properties instead of spreading potentially non-object schema
+        const definitions: Partial<MagentoApiSchema> = {
+            swagger: schema.swagger,
+            info: schema.info,
+            host: schema.host,
+            basePath: schema.basePath,
+            schemes: schema.schemes,
+            definitions: schema.definitions,
+            // tags: schema.tags, // Exclude tags as it might be optional or handled differently
+            paths: {}, // Keep paths empty as intended
         };
         return {
             content: [{
@@ -138,7 +145,8 @@ server.tool(
         queryParams: z.nullable(z.record(z.string())),
         body: z.nullable(z.string()),
     },
-    async (params) => await callMagentoApi(axiosInstance, params),
+    // Explicitly type params to match the expected structure for callMagentoApi
+    async (params: CallApiParams) => await callMagentoApi(axiosInstance, params),
 );
 
 // Start receiving messages on stdin and sending messages on stdout
