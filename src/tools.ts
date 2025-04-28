@@ -6,7 +6,7 @@ export interface CallApiParams {
     method: 'get' | 'post' | 'put' | 'delete';
     path: string;
     queryParams: Record<string, string> | null;
-    body: string | null;
+    body: object | null;
 }
 
 export async function callMagentoApi(axiosInstance: AxiosInstance, request: CallApiParams): Promise<CallToolResult> {
@@ -23,7 +23,7 @@ export async function callMagentoApi(axiosInstance: AxiosInstance, request: Call
             method: request.method,
             url: request.path,
             params: request.queryParams,
-            data: request.body ? JSON.parse(request.body) : undefined,
+            data: request.body ? request.body : undefined,
         });
         responseText = response.data;
     } catch (error) {
