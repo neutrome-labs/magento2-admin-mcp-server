@@ -1,5 +1,5 @@
 {
-  "name": "magento2-mcp-server-v2",
+  "name": "magento2-admin-mcp-server-v2",
   "version": "1.0.0",
   "type": "module",
   "scripts": {

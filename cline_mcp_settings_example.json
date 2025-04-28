@@ -1,0 +1,27 @@
+{
+    "demo-shop-over-magento2-admin-mcp-server-v2": {
+      "command": "bun",
+      "args": [
+        "run",
+        "/var/misc/neutrome/magento2-admin-mcp-server-v2/src/server.ts"
+      ],
+      "cwd": "/var/misc/neutrome/magento2-admin-mcp-server-v2",
+      "env": {
+        "MCP_TITLE": "Hal18",
+        "MAGENTO_BASE_URL": "https://app.project.test",
+        "MAGENTO_INTEGRATION_TOKEN": "<token>",
+        "FEATURED_APIS_0": "lvl2_app__list_modules::get::/V1/neutromelabs_mcp/modules",
+        "FEATURED_APIS_1": "lvl2_app__list_module_files::get::/V1/neutromelabs_mcp/modules/{moduleName}/files",
+        "FEATURED_APIS_2": "lvl2_app__get_module_file_content::get::/V1/neutromelabs_mcp/modules/{moduleName}/content",
+        "FEATURED_APIS_3": "lvl2_app__execute_arbitrary_php::post::/V1/neutromelabs_mcp/execute/php",
+        "FEATURED_APIS_4": "lvl3_env__execute_arbitrary_sql::post::/V1/neutromelabs_mcp/execute/sql",
+        "FEATURED_APIS_5": "lvl3_env__execute_arbitrary_shell::post::/V1/neutromelabs_mcp/execute/shell"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "lvl1_rest__search_api_methods",
+        "lvl1_rest__get_api_definitions"
+      ],
+      "timeout": 300
+    }
+}

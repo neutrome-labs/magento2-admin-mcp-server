@@ -132,8 +132,9 @@ server.tool(
         let paths = schema.paths;
 
         if (search) {
+            const searchs = search.split(' ');
             paths = Object.fromEntries(
-                Object.entries(paths).filter(([path]) => path.includes(search))
+                Object.entries(paths).filter(([path]) => searchs.some((search) => path.toLowerCase().includes(search.toLowerCase())))
             );
         }
 
