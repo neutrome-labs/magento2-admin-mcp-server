@@ -1,0 +1,146 @@
+import axios from 'axios';
+import https from 'https'; // Import https module
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+import { fetchMagentoApiSchema, MagentoApiSchema } from './swagger';
+import { callMagentoApi } from './tools';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+let featuredApis: {[k: string]: string} = {};
+for (const [key, value] of Object.entries(process.env)) {
+    if (value && value?.length > 0 && key.startsWith('FEATURED_APIS_')) {
+        const parts = value.split('::');
+        if (parts.length === 3) {
+            featuredApis[parts[0]] = `${parts[1]}::${parts[2]}`;
+        } else {
+            console.error(`Invalid format for ${key}: ${value}`);
+        }
+    }
+}
+
+const MAGENTO_BASE_URL = process.env.MAGENTO_BASE_URL;
+const MAGENTO_INTEGRATION_TOKEN = process.env.MAGENTO_INTEGRATION_TOKEN;
+const FEATURED_APIS = featuredApis;
+
+const axiosInstance = axios.create({
+    baseURL: MAGENTO_BASE_URL + '/rest',
+    headers: {
+        Authorization: `Bearer ${MAGENTO_INTEGRATION_TOKEN}`,
+        'Content-Type': 'application/json',
+    },
+    httpsAgent: new https.Agent({
+        rejectUnauthorized: false,
+    }),
+});
+
+const schema = await fetchMagentoApiSchema(axiosInstance);
+
+const server = new McpServer({
+    name: "Magento 2",
+    version: "2.0.0"
+});
+
+for (const [name, api] of Object.entries(FEATURED_APIS)) {
+    const [method, path] = api.split('::');
+
+    let toolSignature: any = {};
+
+    const pathParams = path.match(/{([^}]+)}/g);
+    if (pathParams) {
+        for (const param of pathParams) {
+            const paramName = param.replace(/{|}/g, '');
+            toolSignature[paramName] = z.string();
+        }
+    }
+
+    for (const params of schema.paths[path][method].parameters ?? []) {
+        if (params.in === 'query') {
+            let toolParamSignature: any = null;
+            if (params.required) {
+                toolParamSignature = z.string();
+            } else {
+                toolParamSignature = z.nullable(z.string());
+            }
+            toolSignature = {
+                ...toolSignature,
+                [params.name]: toolParamSignature,
+            };
+        }
+        else if (params.in === 'body') {
+            toolSignature = Object.entries(params.schema.properties).reduce((acc, [key, value]) => {
+                acc[key] = params.schema.required!.includes(key) ? z.string() : z.nullable(z.string());
+                return acc;
+            }, toolSignature ?? {} as Record<string, z.ZodTypeAny>);
+        }
+    }
+
+    server.tool(
+        name,
+        toolSignature,
+        async (params) => await callMagentoApi(axiosInstance, {
+            method,
+            path,
+            queryParams: method !== 'post' ? JSON.parse(JSON.stringify(params)) : null,
+            body: method === 'post' ? JSON.stringify(params) : null,
+        })
+    );
+}
+
+server.tool(
+    "lvl1_rest__get_api_definitions",
+    {},
+    () => {
+        const definitions: MagentoApiSchema = {
+            ...schema,
+            paths: {},
+        };
+        return {
+            content: [{
+                type: 'text',
+                text: JSON.stringify(definitions),
+            }]
+        };
+    }
+);
+
+server.tool(
+    "lvl1_rest__search_api_methods",
+    { search: z.nullable(z.string()) },
+    ({ search }) => {
+        console.error("search", search);
+        let paths = schema.paths;
+
+        if (search) {
+            paths = Object.fromEntries(
+                Object.entries(paths).filter(([path]) => path.includes(search))
+            );
+        }
+
+        return {
+            content: Object.entries(paths).map(([path, item]) => {
+                return {
+                    type: 'text',
+                    text: JSON.stringify({path, ...item}),
+                };
+            })
+        };
+    }
+);
+
+server.tool(
+    "lvl1_rest__call_api_method",
+    {
+        method: z.enum(['get', 'post', 'put', 'delete']),
+        path: z.string(),
+        queryParams: z.nullable(z.record(z.string())),
+        body: z.nullable(z.string()),
+    },
+    async (params) => await callMagentoApi(axiosInstance, params),
+);
+
+// Start receiving messages on stdin and sending messages on stdout
+const transport = new StdioServerTransport();
+await server.connect(transport);

@@ -1,0 +1,20 @@
+{
+  "name": "magento2-mcp-server-v2",
+  "version": "1.0.0",
+  "type": "module",
+  "bin": {
+    "magento2-mcp-server": "./server.ts"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.2",
+    "@types/node": "^22.15.2",
+    "axios": "^1.9.0",
+    "dotenv": "^16.5.0"
+  }
+}
