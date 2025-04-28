@@ -166,7 +166,7 @@ server.tool(
         method: z.enum(['GET', 'get', 'POST', 'post', 'PUT', 'put', 'DELETE', 'delete']),
         path: z.string().describe('Path to the API method (e.g. /V1/products)'),
         query: z.nullable(z.string()).describe('Nullable query parameters as querystring (e.g. ?param1=value1&param2=value2)'),
-        body: z.nullable(z.string()).describe('Nullable request body as JSON string'),
+        body: z.nullable(z.string()).describe('Nullable request body as an escaped JSON string'),
     },
     // Explicitly type params to match the expected structure for callMagentoApi
     async (params: CallApiParams) => await callMagentoApi(axiosInstance, {
