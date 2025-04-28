@@ -94,7 +94,7 @@ for (const [name, api] of Object.entries(FEATURED_APIS)) {
         async (params: CallApiParams) => await callMagentoApi(axiosInstance, {
             method: method as CallApiParams['method'], // Assert type here
             path,
-            queryParams: method !== 'post' ? JSON.parse(JSON.stringify(params)) : null,
+            query: method !== 'post' ? JSON.parse(JSON.stringify(params)) : null,
             body: method === 'post' ? params : null,
         })
     );
@@ -154,7 +154,7 @@ server.tool(
     {
         method: z.enum(['GET', 'get', 'POST', 'post', 'PUT', 'put', 'DELETE', 'delete']),
         path: z.string(),
-        queryParams: z.nullable(z.record(z.string())),
+        query: z.nullable(z.string()),
         body: z.nullable(z.any()),
     },
     // Explicitly type params to match the expected structure for callMagentoApi

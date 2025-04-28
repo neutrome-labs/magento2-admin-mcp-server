@@ -5,14 +5,14 @@ import axios, { AxiosInstance } from "axios";
 export interface CallApiParams {
     method: 'get' | 'post' | 'put' | 'delete';
     path: string;
-    queryParams: Record<string, string> | null;
+    query: string | null;
     body: object | null;
 }
 
 export async function callMagentoApi(axiosInstance: AxiosInstance, request: CallApiParams): Promise<CallToolResult> {
-    // replace path params in path with values from queryParams
-    if (request.queryParams) {
-        for (const [key, value] of Object.entries(request.queryParams)) {
+    // replace path params in path with values from query
+    if (request.query) {
+        for (const [key, value] of Object.entries(request.query)) {
             request.path = request.path.replace(`{${key}}`, value);
         }
     }
@@ -22,7 +22,7 @@ export async function callMagentoApi(axiosInstance: AxiosInstance, request: Call
         const response = await axiosInstance.request({
             method: request.method,
             url: request.path,
-            params: request.queryParams,
+            params: request.query,
             data: request.body ? request.body : undefined,
         });
         responseText = response.data;
