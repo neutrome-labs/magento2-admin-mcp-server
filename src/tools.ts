@@ -6,7 +6,7 @@ export interface CallApiParams {
     method: 'get' | 'post' | 'put' | 'delete';
     path: string;
     query: string | null;
-    body: object | null;
+    body: string | null;
 }
 
 export async function callMagentoApi(axiosInstance: AxiosInstance, request: CallApiParams): Promise<CallToolResult> {

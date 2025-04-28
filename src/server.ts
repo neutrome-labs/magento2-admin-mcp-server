@@ -9,12 +9,16 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-let featuredApis: {[k: string]: string} = {};
+let featuredApis: {[k: string]: {description: string, target: string}} = {};
 for (const [key, value] of Object.entries(process.env)) {
-    if (value && value?.length > 0 && key.startsWith('FEATURED_APIS_')) {
+    if (value && value?.length > 0 && key.startsWith('FEATURED_APIS_') && !key.includes("DESCRIPTION")) {
         const parts = value.split('::');
         if (parts.length === 3) {
-            featuredApis[parts[0]] = `${parts[1]}::${parts[2]}`;
+            const desciption = process.env[`${key}_DESCRIPTION`];
+            featuredApis[parts[0]] = {
+                description: desciption ?? parts[0],
+                target: `${parts[1]}::${parts[2]}`
+            };
         } else {
             console.error(`Invalid format for ${key}: ${value}`);
         }
@@ -45,7 +49,8 @@ const server = new McpServer({
 });
 
 for (const [name, api] of Object.entries(FEATURED_APIS)) {
-    const [method, path] = api.split('::');
+    const { description, target } = api;
+    const [method, path] = target.split('::');
 
     let toolSignature: any = {};
 
@@ -90,18 +95,20 @@ for (const [name, api] of Object.entries(FEATURED_APIS)) {
 
     server.tool(
         name,
+        description,
         toolSignature,
         async (params: CallApiParams) => await callMagentoApi(axiosInstance, {
             method: method as CallApiParams['method'], // Assert type here
             path,
             query: method !== 'post' ? JSON.parse(JSON.stringify(params)) : null,
-            body: method === 'post' ? params : null,
+            body: method === 'post' ? JSON.stringify(params) : null,
         })
     );
 }
 
 server.tool(
     "lvl1_rest__get_api_definitions",
+    "Allows to get OpenAPI schema definitions",
     {},
     () => {
         // Explicitly copy properties instead of spreading potentially non-object schema
@@ -126,7 +133,10 @@ server.tool(
 
 server.tool(
     "lvl1_rest__search_api_methods",
-    { search: z.nullable(z.string()) },
+    "Allows to search OpenAPI schema for API methods by keyword(s) (e.g. products, orders, etc.)",
+    { 
+        search: z.nullable(z.string()).describe('Search keywords (e.g. products, orders, etc.)'),
+    },
     ({ search }) => {
         console.error("search", search);
         let paths = schema.paths;
@@ -151,11 +161,12 @@ server.tool(
 
 server.tool(
     "lvl1_rest__call_api_method",
+    "Allows to call any known REST API method",
     {
         method: z.enum(['GET', 'get', 'POST', 'post', 'PUT', 'put', 'DELETE', 'delete']),
         path: z.string(),
-        query: z.nullable(z.string()),
-        body: z.nullable(z.any()),
+        query: z.nullable(z.string()).describe('Nullable query parameters as querystring (e.g. ?param1=value1&param2=value2)'),
+        body: z.nullable(z.string()).describe('Nullable request body as JSON string'),
     },
     // Explicitly type params to match the expected structure for callMagentoApi
     async (params: CallApiParams) => await callMagentoApi(axiosInstance, {
