@@ -5,20 +5,24 @@ import axios, { AxiosInstance } from "axios";
 export interface CallApiParams {
     method: 'get' | 'post' | 'put' | 'delete';
     path: string;
-    query: string | null;
-    body: string | null;
+    query?: string | null;
+    body?: Record<string, any> | null; // Changed body type from string | null
 }
 
-function parseQuerystring(s: string): Record<string, string> {
-    let nonNull = false;
-    let query = {};
-    var pairs = (s[0] === '?' ? s.substr(1) : s).split('&');
-    for (var i = 0; i < pairs.length; i++) {
-        var pair = pairs[i].split('=');
-        query[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || '');
-        nonNull = true;
+function parseQuerystring(s: string): Record<string, string> | null { // Added null return type possibility
+    if (!s || s.length === 0) {
+        return null;
     }
-    return nonNull ? query : null;
+    let query: Record<string, string> = {};
+    const pairs = (s[0] === '?' ? s.substr(1) : s).split('&');
+    for (const pairStr of pairs) {
+        const pair = pairStr.split('=');
+        if (pair.length > 0 && pair[0]) { // Ensure there's a key
+            query[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || '');
+        }
+    }
+    // Return null if the query object is empty after parsing
+    return Object.keys(query).length > 0 ? query : null;
 }
 
 export async function callMagentoApi(axiosInstance: AxiosInstance, request: CallApiParams): Promise<CallToolResult> {
@@ -34,10 +38,11 @@ export async function callMagentoApi(axiosInstance: AxiosInstance, request: Call
         const response = await axiosInstance.request({
             method: request.method,
             url: request.path,
-            params: queryParams,
-            data: request.body ? request.body : undefined,
+            params: queryParams ?? undefined, // Pass undefined if queryParams is null
+            data: request.body ?? undefined, // Pass request.body directly (object or null/undefined)
         });
-        responseText = response.data;
+        // Ensure response data is stringified if it's an object/array
+        responseText = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
     } catch (error) {
         if (axios.isAxiosError(error)) {
             if (error.response) {

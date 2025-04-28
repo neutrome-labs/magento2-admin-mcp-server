@@ -97,12 +97,36 @@ for (const [name, api] of Object.entries(FEATURED_APIS)) {
         name,
         description,
         toolSignature,
-        async (params: CallApiParams) => await callMagentoApi(axiosInstance, {
-            method: method as CallApiParams['method'], // Assert type here
-            path,
-            query: method !== 'post' ? JSON.parse(JSON.stringify(params)) : null,
-            body: method === 'post' ? JSON.stringify(params) : null,
-        })
+        // Adjust how params are passed based on the method
+        async (params: Record<string, any>) => {
+            // Separate path params from query/body params
+            const callParams: CallApiParams = {
+                method: method.toLowerCase() as CallApiParams['method'],
+                path: path,
+                query: null,
+                body: null,
+            };
+
+            const pathParamNames = (path.match(/{([^}]+)}/g) || []).map(p => p.replace(/{|}/g, ''));
+            const otherParams: Record<string, any> = {};
+
+            for (const key in params) {
+                if (!pathParamNames.includes(key)) {
+                    otherParams[key] = params[key];
+                }
+            }
+
+            if (method.toLowerCase() === 'get' || method.toLowerCase() === 'delete') {
+                // For GET/DELETE, remaining params are query params
+                const queryString = new URLSearchParams(otherParams).toString();
+                callParams.query = queryString.length > 0 ? `?${queryString}` : null;
+            } else {
+                // For POST/PUT, remaining params form the body
+                callParams.body = otherParams;
+            }
+
+            return await callMagentoApi(axiosInstance, callParams);
+        }
     );
 }
 
@@ -165,13 +189,18 @@ server.tool(
     {
         method: z.enum(['GET', 'get', 'POST', 'post', 'PUT', 'put', 'DELETE', 'delete']),
         path: z.string().describe('Path to the API method (e.g. /V1/products)'),
-        query: z.nullable(z.string()).describe('Nullable query parameters as querystring (e.g. ?param1=value1&param2=value2)'),
-        body: z.nullable(z.string()).describe('Nullable request body as an escaped JSON string'),
+        query: z.nullable(z.string()).optional().describe('Nullable query parameters as querystring (e.g. ?param1=value1&param2=value2)'),
+        body: z.nullable(z.record(z.any())).optional().describe('Nullable request body as a JSON object'),
     },
-    // Explicitly type params to match the expected structure for callMagentoApi
-    async (params: CallApiParams) => await callMagentoApi(axiosInstance, {
+    // Adjust the handler to match the new CallApiParams and Zod schema
+    async (params: {
+        method: 'GET' | 'get' | 'POST' | 'post' | 'PUT' | 'put' | 'DELETE' | 'delete';
+        path: string;
+        query: string | null;
+        body: Record<string, any> | null; // Match the Zod schema type
+    }) => await callMagentoApi(axiosInstance, {
         ...params,
-        method: params.method.toLowerCase() as CallApiParams['method'], // Assert type here
+        method: params.method.toLowerCase() as CallApiParams['method'], // Ensure method is lowercase
     }),
 );
 

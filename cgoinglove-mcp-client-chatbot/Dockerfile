@@ -14,8 +14,7 @@ RUN git clone https://github.com/cgoinglove/mcp-client-chatbot .
 # Install dependencies
 RUN pnpm install
 
-# Run the initial setup script
-RUN pnpm run initial
+COPY cgoinglove-mcp-client-chatbot/mcp-config.json .mcp-config.json
 
 # Copy package files and install Node.js dependencies (including typescript devDependency)
 COPY package*.json ./magento2-admin-mcp-server-v2/
@@ -34,4 +33,4 @@ RUN cd ./magento2-admin-mcp-server-v2/ && npx tsc --project tsconfig.json
 EXPOSE 3000
 
 # Run the development server
-CMD ["pnpm", "run", "dev"]
+CMD ["sh", "-c", "pnpm run initial && pnpm run dev"]
