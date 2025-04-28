@@ -22,7 +22,7 @@ function parseQuerystring(s: string): Record<string, string> {
 }
 
 export async function callMagentoApi(axiosInstance: AxiosInstance, request: CallApiParams): Promise<CallToolResult> {
-    const queryParams = parseQuerystring(request.query);
+    const queryParams = request.query?.length > 0 ? parseQuerystring(request.query) : null;
     if (queryParams) {
         for (const [key, value] of Object.entries(queryParams)) {
             request.path = request.path.replace(`{${key}}`, value);
