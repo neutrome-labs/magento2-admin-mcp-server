@@ -151,13 +151,16 @@ server.tool(
 server.tool(
     "lvl1_rest__call_api_method",
     {
-        method: z.enum(['get', 'post', 'put', 'delete']),
+        method: z.enum(['GET', 'get', 'POST', 'post', 'PUT', 'put', 'DELETE', 'delete']),
         path: z.string(),
         queryParams: z.nullable(z.record(z.string())),
         body: z.nullable(z.string()),
     },
     // Explicitly type params to match the expected structure for callMagentoApi
-    async (params: CallApiParams) => await callMagentoApi(axiosInstance, params),
+    async (params: CallApiParams) => await callMagentoApi(axiosInstance, {
+        ...params,
+        method: params.method.toLowerCase() as CallApiParams['method'], // Assert type here
+    }),
 );
 
 // Start receiving messages on stdin and sending messages on stdout
