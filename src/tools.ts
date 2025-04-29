@@ -35,6 +35,7 @@ export async function callMagentoApi(axiosInstance: AxiosInstance, request: Call
 
     let responseText = '';
     try {
+        console.warn("Calling Magento 2 API", request.method, request.path, queryParams, request.body);
         const response = await axiosInstance.request({
             method: request.method,
             url: request.path,

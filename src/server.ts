@@ -52,16 +52,6 @@ for (const [name, api] of Object.entries(FEATURED_APIS)) {
     const { description, target } = api;
     const [method, path] = target.split('::');
 
-    let toolSignature: any = {};
-
-    const pathParams = path.match(/{([^}]+)}/g);
-    if (pathParams) {
-        for (const param of pathParams) {
-            const paramName = param.replace(/{|}/g, '');
-            toolSignature[paramName] = z.string();
-        }
-    }
-
     if (!schema.paths[path]) {
         console.error(`Path ${path} not found in schema. Skpping featured API tool export`);
         continue;
@@ -72,14 +62,18 @@ for (const [name, api] of Object.entries(FEATURED_APIS)) {
         continue;
     }
 
+    let toolSignature: any = {};
     for (const params of schema.paths[path][method].parameters ?? []) {
-        if (params.in === 'query') {
-            let toolParamSignature: any = null;
-            if (params.required) {
-                toolParamSignature = z.string();
-            } else {
-                toolParamSignature = z.nullable(z.string());
-            }
+        if (params.in === 'path') {
+            let toolParamSignature: any = params.type === 'integer' ? z.number() : z.string();
+            toolParamSignature = params.required ? toolParamSignature : z.nullable(toolParamSignature);
+            toolSignature = {
+                ...toolSignature,
+                [params.name]: toolParamSignature,
+            };
+        } else if (params.in === 'query') {
+            let toolParamSignature: any = z.string();
+            toolParamSignature = params.required ? toolParamSignature : z.nullable(toolParamSignature).optional();
             toolSignature = {
                 ...toolSignature,
                 [params.name]: toolParamSignature,
@@ -87,7 +81,9 @@ for (const [name, api] of Object.entries(FEATURED_APIS)) {
         }
         else if (params.in === 'body') {
             toolSignature = Object.entries(params.schema.properties).reduce((acc, [key, value]) => {
-                acc[key] = params.schema.required!.includes(key) ? z.string() : z.nullable(z.string());
+                let toolParamSignature: any = (value as any)?.type === 'integer' ? z.number() : z.string();
+                toolParamSignature = params.schema.required!.includes(key) ? toolParamSignature : z.nullable(toolParamSignature).optional();
+                acc[key] = toolParamSignature;
                 return acc;
             }, toolSignature ?? {} as Record<string, z.ZodTypeAny>);
         }
@@ -97,9 +93,8 @@ for (const [name, api] of Object.entries(FEATURED_APIS)) {
         name,
         description,
         toolSignature,
-        // Adjust how params are passed based on the method
         async (params: Record<string, any>) => {
-            // Separate path params from query/body params
+            console.warn("Got managed tool call:", name, params);
             const callParams: CallApiParams = {
                 method: method.toLowerCase() as CallApiParams['method'],
                 path: path,
@@ -107,21 +102,25 @@ for (const [name, api] of Object.entries(FEATURED_APIS)) {
                 body: null,
             };
 
-            const pathParamNames = (path.match(/{([^}]+)}/g) || []).map(p => p.replace(/{|}/g, ''));
-            const otherParams: Record<string, any> = {};
-
-            for (const key in params) {
-                if (!pathParamNames.includes(key)) {
-                    otherParams[key] = params[key];
-                }
-            }
-
             if (method.toLowerCase() === 'get' || method.toLowerCase() === 'delete') {
-                // For GET/DELETE, remaining params are query params
-                const queryString = new URLSearchParams(otherParams).toString();
+                // For GET/DELETE, params are query params
+                const queryString = new URLSearchParams(params).toString();
                 callParams.query = queryString.length > 0 ? `?${queryString}` : null;
             } else {
-                // For POST/PUT, remaining params form the body
+                const pathParamNames = (path.match(/{([^}]+)}/g) || []).map(p => p.replace(/{|}/g, ''));
+
+                const pathParams: Record<string, any> = {};
+                const otherParams: Record<string, any> = {};
+                for (const key in params) {
+                    if (pathParamNames.includes(key)) {
+                        pathParams[key] = params[key];
+                    } else {
+                        otherParams[key] = params[key];
+                    }
+                }
+
+                const queryString = new URLSearchParams(pathParams).toString();
+                callParams.query = queryString.length > 0 ? `?${queryString}` : null;
                 callParams.body = otherParams;
             }
 
