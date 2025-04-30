@@ -31,7 +31,7 @@ const MAGENTO_INTEGRATION_TOKEN = process.env.MAGENTO_INTEGRATION_TOKEN;
 const FEATURED_APIS = featuredApis;
 
 const axiosInstance = axios.create({
-    baseURL: MAGENTO_BASE_URL + '/rest',
+    baseURL: MAGENTO_BASE_URL,
     headers: {
         Authorization: `Bearer ${MAGENTO_INTEGRATION_TOKEN}`,
         'Content-Type': 'application/json',

@@ -50,7 +50,7 @@ export interface MagentoApiSchema {
 
 export async function fetchMagentoApiSchema(axiosInstance: AxiosInstance): Promise<MagentoApiSchema> {
     const schema = (await axiosInstance.get<MagentoApiSchema>(
-        '/all/schema?services=all'
+        '/schema?services=all'
     ))?.data;
     
     if (!schema) {
