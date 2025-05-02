@@ -4,6 +4,7 @@ import axios, { AxiosInstance } from "axios";
 // Define the type for parameters expected by callMagentoApi
 export interface CallApiParams {
     method: 'get' | 'post' | 'put' | 'delete';
+    storeCode: string | null; // Store code can be null or a string
     path: string;
     query?: string | null;
     body?: Record<string, any> | null; // Changed body type from string | null
@@ -38,7 +39,7 @@ export async function callMagentoApi(axiosInstance: AxiosInstance, request: Call
         console.warn("Calling Magento 2 API", request.method, request.path, queryParams, request.body);
         const response = await axiosInstance.request({
             method: request.method,
-            url: request.path,
+            url: `/${request.storeCode ?? 'all'}${request.path}`,
             params: queryParams ?? undefined, // Pass undefined if queryParams is null
             data: request.body ?? undefined, // Pass request.body directly (object or null/undefined)
         });

@@ -3,7 +3,7 @@ import https from 'https'; // Import https module
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { fetchMagentoApiSchema, MagentoApiSchema } from './swagger.js'; // Added .js extension
+import { fetchMagentoApiEnvironment, fetchMagentoApiSchema, MagentoApiSchema } from './swagger.js'; // Added .js extension
 import { callMagentoApi, CallApiParams } from './tools.js'; // Added .js extension and CallApiParams import
 import dotenv from 'dotenv';
 
@@ -31,7 +31,7 @@ const MAGENTO_INTEGRATION_TOKEN = process.env.MAGENTO_INTEGRATION_TOKEN;
 const FEATURED_APIS = featuredApis;
 
 const axiosInstance = axios.create({
-    baseURL: MAGENTO_BASE_URL,
+    baseURL: MAGENTO_BASE_URL + '/rest',
     headers: {
         Authorization: `Bearer ${MAGENTO_INTEGRATION_TOKEN}`,
         'Content-Type': 'application/json',
@@ -41,11 +41,21 @@ const axiosInstance = axios.create({
     }),
 });
 
-const schema = await fetchMagentoApiSchema(axiosInstance);
+let schema = await fetchMagentoApiSchema(axiosInstance);
+let magento2Environment = await fetchMagentoApiEnvironment(axiosInstance);
+
+setInterval(async () => {
+    try {
+        schema = await fetchMagentoApiSchema(axiosInstance);
+        magento2Environment = await fetchMagentoApiEnvironment(axiosInstance);
+    } catch (error) {
+        console.error("Error fetching Magento API schema or environment:", error);
+    }
+}, 1 * 60 * 60); // 1 hour
 
 const server = new McpServer({
     name: (MCP_TITLE + " Magento 2").trim(),
-    version: "2.1.0"
+    version: "2.2.0"
 });
 
 for (const [name, api] of Object.entries(FEATURED_APIS)) {
@@ -62,7 +72,10 @@ for (const [name, api] of Object.entries(FEATURED_APIS)) {
         continue;
     }
 
-    let toolSignature: any = {};
+    let toolSignature: any = {
+        storeCode: z.nullable(z.string()).default("all").describe('Store code (e.g. default'),
+    };
+
     for (const params of schema.paths[path][method].parameters ?? []) {
         if (params.in === 'path') {
             let toolParamSignature: any = params.type === 'integer' ? z.number() : z.string();
@@ -97,10 +110,12 @@ for (const [name, api] of Object.entries(FEATURED_APIS)) {
             console.warn("Got managed tool call:", name, params);
             const callParams: CallApiParams = {
                 method: method.toLowerCase() as CallApiParams['method'],
+                storeCode: params.storeCode ?? null,
                 path: path,
                 query: null,
                 body: null,
             };
+            params.storeCode = undefined;
 
             if (method.toLowerCase() === 'get' || method.toLowerCase() === 'delete') {
                 // For GET/DELETE, params are query params
@@ -130,8 +145,43 @@ for (const [name, api] of Object.entries(FEATURED_APIS)) {
 }
 
 server.tool(
+    "lvl0_info__get_deployment_info",
+    "Get deployment information (urls, versions, store codes, currencies, etc.)",
+    {},
+    async () => {
+        const environment = {
+            php: {
+                executable: process.env.MAGENTO_PHP_EXECUTABLE,
+                version: process.env.MAGENTO_PHP_VERSION,
+            },
+            magento: {
+                frontendBaseUrl: MAGENTO_BASE_URL,
+                fsRoot: process.env.MAGENTO_FS_ROOT,
+                version: process.env.MAGENTO_VERSION,
+                edition: process.env.MAGENTO_EDITION,
+                mode: process.env.MAGENTO_MODE,
+            }
+        };
+
+        return {
+            content: [{
+                type: 'text',
+                text: JSON.stringify({
+                    environment,
+                    websites: magento2Environment.websites,
+                    stores: {
+                        storeGroups: magento2Environment.storeGroups,
+                        storeViews: magento2Environment.storeViews,
+                    },
+                }),
+            }]
+        };
+    }
+);
+
+server.tool(
     "lvl1_rest__get_api_definitions",
-    "Allows to get OpenAPI schema definitions",
+    "Get OpenAPI schema definitions",
     {},
     () => {
         // Explicitly copy properties instead of spreading potentially non-object schema
@@ -156,7 +206,7 @@ server.tool(
 
 server.tool(
     "lvl1_rest__search_api_methods",
-    "Allows to search OpenAPI schema for API methods by keyword(s) (e.g. products, orders, etc.)",
+    "Search OpenAPI schema for API methods by keyword(s) (e.g. products, orders, etc.)",
     { 
         search: z.nullable(z.string()).describe('Search keywords (e.g. products, orders, etc.)'),
     },
@@ -184,9 +234,10 @@ server.tool(
 
 server.tool(
     "lvl1_rest__call_api_method",
-    "Allows to call any known REST API method",
+    "Call any known REST API method",
     {
         method: z.enum(['GET', 'get', 'POST', 'post', 'PUT', 'put', 'DELETE', 'delete']),
+        storeCode: z.nullable(z.string()).default("all").describe('Store code (e.g. default'),
         path: z.string().describe('Path to the API method (e.g. /V1/products)'),
         query: z.nullable(z.string()).optional().describe('Nullable query parameters as querystring (e.g. ?param1=value1&param2=value2)'),
         body: z.nullable(z.record(z.any())).optional().describe('Nullable request body as a JSON object'),
@@ -194,6 +245,7 @@ server.tool(
     // Adjust the handler to match the new CallApiParams and Zod schema
     async (params: {
         method: 'GET' | 'get' | 'POST' | 'post' | 'PUT' | 'put' | 'DELETE' | 'delete';
+        storeCode: string | null;
         path: string;
         query: string | null;
         body: Record<string, any> | null; // Match the Zod schema type

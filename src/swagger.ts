@@ -48,9 +48,15 @@ export interface MagentoApiSchema {
     // Add other top-level Swagger properties if needed (securityDefinitions, tags, etc.)
 }
 
+export interface MagentoEnvironment {
+    websites: any[]; // Define more specific type if needed
+    storeGroups: any[]; // Define more specific type if needed
+    storeViews: any[]; // Define more specific type if needed
+}
+
 export async function fetchMagentoApiSchema(axiosInstance: AxiosInstance): Promise<MagentoApiSchema> {
     const schema = (await axiosInstance.get<MagentoApiSchema>(
-        '/schema?services=all'
+        '/all/schema?services=all'
     ))?.data;
     
     if (!schema) {
@@ -61,4 +67,16 @@ export async function fetchMagentoApiSchema(axiosInstance: AxiosInstance): Promi
         ...schema,
         tags: [],
     }
+}
+
+export async function fetchMagentoApiEnvironment(axiosInstance: AxiosInstance): Promise<MagentoEnvironment> {
+    const websites = (await axiosInstance.get('/all/V1/store/websites')).data;
+    const storeGroups = (await axiosInstance.get('/all/V1/store/storeGroups')).data.filter((storeGroup: any) => storeGroup.id > 0);
+    const storeViews = (await axiosInstance.get('/all/V1/store/storeViews')).data;
+
+    return {
+        websites,
+        storeGroups,
+        storeViews,
+    };
 }
