@@ -95,7 +95,7 @@ for (const [name, api] of Object.entries(FEATURED_APIS)) {
         else if (params.in === 'body') {
             toolSignature = Object.entries(params.schema.properties).reduce((acc, [key, value]) => {
                 let toolParamSignature: any = (value as any)?.type === 'integer' ? z.number() : z.string();
-                toolParamSignature = params.schema.required!.includes(key) ? toolParamSignature : z.nullable(toolParamSignature).optional();
+                toolParamSignature = params.schema.required?.includes(key) ? toolParamSignature : z.nullable(toolParamSignature).optional();
                 acc[key] = toolParamSignature;
                 return acc;
             }, toolSignature ?? {} as Record<string, z.ZodTypeAny>);
