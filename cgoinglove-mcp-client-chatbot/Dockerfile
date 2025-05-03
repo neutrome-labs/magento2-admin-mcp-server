@@ -9,7 +9,7 @@ WORKDIR /app
 
 # Clone the repository
 # Using . to clone into the current directory (/app)
-RUN git clone https://github.com/cgoinglove/mcp-client-chatbot .
+RUN git clone -b no-auth https://github.com/theuargb/mcp-client-chatbot .
 
 # Install dependencies
 RUN pnpm install
