@@ -227,7 +227,10 @@ server.tool(
                     type: 'text',
                     text: JSON.stringify({path, ...item}),
                 };
-            })
+            }).concat([{
+                type: 'text',
+                text: JSON.stringify({definitions: schema.definitions}),
+            }]) as any,
         };
     }
 );
