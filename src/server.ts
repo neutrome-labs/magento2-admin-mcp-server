@@ -337,10 +337,8 @@ server.tool(
         method: params.method.toLowerCase() as CallApiParams['method'], // Ensure method is lowercase
     }),
 );
-// Check if SSE mode is enabled
-const SSE_ENABLED = true; process.env.SSE === 'true';
 
-if (SSE_ENABLED) {
+if (process.env.SSE === 'true') {
     console.log('Starting server in SSE mode');
     const app = express();
     const PORT = process.env.SSE_PORT || 3000;
