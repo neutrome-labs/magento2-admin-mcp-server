@@ -204,20 +204,61 @@ server.tool(
     }
 );
 
+// Helper function for recursive definition collection
+function collectAllReferencedDefinitions(
+    definitionName: string,
+    allSchemaDefinitions: typeof schema.definitions, // Assuming schema is accessible globally or passed correctly
+    collectedDefinitions: Map<string, any>,
+    currentDepth: number,
+    maxDepth: number
+) {
+    if (currentDepth >= maxDepth || collectedDefinitions.has(definitionName)) {
+        return;
+    }
+
+    const definitionObject = allSchemaDefinitions[definitionName];
+    if (!definitionObject) {
+        // console.warn(`Recursive search: Definition ${definitionName} not found in schema.`);
+        return; // Definition not found, stop recursion for this path
+    }
+
+    collectedDefinitions.set(definitionName, definitionObject);
+
+    // Search for further references within this definition object
+    const definitionString = JSON.stringify(definitionObject);
+    const regex = /"#\/definitions\/([^"]*)"/g; // Regex to find references like "#/definitions/SomeType"
+    let matches;
+
+    while ((matches = regex.exec(definitionString)) !== null) {
+        const referencedDefName = matches[1]; // matches[1] is the captured group (e.g., "SomeType")
+        if (referencedDefName) {
+            collectAllReferencedDefinitions(
+                referencedDefName,
+                allSchemaDefinitions,
+                collectedDefinitions,
+                currentDepth + 1,
+                maxDepth
+            );
+        }
+    }
+}
+
 server.tool(
     "lvl1_rest__search_api_methods",
-    "Search OpenAPI schema for API methods by keyword(s) (e.g. products, orders, etc.)",
+    "Search OpenAPI schema for API methods by keyword(s) (e.g. products, orders, etc.) and include all referenced definitions recursively (max depth 10).",
     { 
         search: z.nullable(z.string()).describe('Search keywords (e.g. products, orders, etc.)'),
     },
     ({ search }) => {
-        console.error("search", search);
+        console.warn("Search API methods called with keyword:", search); // Changed console.error to console.warn for consistency
         let paths = schema.paths;
 
         if (search) {
-            const searchs = search.split(' ');
+            const searchTerms = search.toLowerCase().split(' ').filter(term => term.length > 0);
             paths = Object.fromEntries(
-                Object.entries(paths).filter(([path]) => searchs.some((search) => path.toLowerCase().includes(search.toLowerCase())))
+                Object.entries(paths).filter(([pathKey]) => 
+                    searchTerms.some((term) => pathKey.toLowerCase().includes(term))
+                )
             );
         }
 
@@ -228,22 +269,44 @@ server.tool(
             };
         });
 
-        const definitionsFromPaths = JSON.stringify(resultPaths).matchAll(/"#\/definitions\/.*"/gm);
+        const definitionRefRegex = /"#\/definitions\/([^"]*)"/g;
+        const knownDefinitionsMasterSet = new Set(Object.keys(schema.definitions));
+        const initialReferencedDefinitionNames = new Set<string>();
 
-        let resultDefinitions = {};
-        for (const definition of definitionsFromPaths) {
-            const definitionName = definition[0].replace(/"#\/definitions\//g, '').replace(/"/g, '');
-            if (schema.definitions[definitionName]) {
-                resultDefinitions[definitionName] = schema.definitions[definitionName];
-            } else {
-                console.error(`Definition ${definitionName} not found in schema. Skipping.`);
+        // 1. Collect initial definitions referenced directly in the API paths
+        for (const pathData of resultPaths) {
+            let matches;
+            // Reset lastIndex before each new execution on a new string
+            definitionRefRegex.lastIndex = 0; 
+            while ((matches = definitionRefRegex.exec(pathData.text)) !== null) {
+                const defName = matches[1]; // The captured definition name
+                if (defName && knownDefinitionsMasterSet.has(defName)) {
+                    initialReferencedDefinitionNames.add(defName);
+                }
             }
         }
+
+        // 2. Recursively collect all definitions
+        const allCollectedDefinitions = new Map<string, any>();
+        const MAX_DEPTH = 10;
+
+        for (const defName of initialReferencedDefinitionNames) {
+            collectAllReferencedDefinitions(
+                defName,
+                schema.definitions, // Pass the global schema.definitions
+                allCollectedDefinitions,
+                0, // Start at depth 0
+                MAX_DEPTH
+            );
+        }
+        
+        // Convert Map to object for JSON stringification
+        const finalResultDefinitionsObject = Object.fromEntries(allCollectedDefinitions);
 
         return {
             content: resultPaths.concat([{
                 type: 'text',
-                text: JSON.stringify({definitions: resultDefinitions}),
+                text: JSON.stringify({definitions: finalResultDefinitionsObject}),
             }]) as any,
         };
     }
