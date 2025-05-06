@@ -221,15 +221,29 @@ server.tool(
             );
         }
 
-        return {
-            content: Object.entries(paths).map(([path, item]) => {
-                return {
-                    type: 'text',
-                    text: JSON.stringify({path, ...item}),
-                };
-            }).concat([{
+        const resultPaths = Object.entries(paths).map(([path, item]) => {
+            return {
                 type: 'text',
-                text: JSON.stringify({definitions: schema.definitions}),
+                text: JSON.stringify({path, ...item}),
+            };
+        });
+
+        const definitionsFromPaths = JSON.stringify(resultPaths).matchAll(/"#\/definitions\/.*"/gm);
+
+        let resultDefinitions = {};
+        for (const definition of definitionsFromPaths) {
+            const definitionName = definition[0].replace(/"#\/definitions\//g, '').replace(/"/g, '');
+            if (schema.definitions[definitionName]) {
+                resultDefinitions[definitionName] = schema.definitions[definitionName];
+            } else {
+                console.error(`Definition ${definitionName} not found in schema. Skipping.`);
+            }
+        }
+
+        return {
+            content: resultPaths.concat([{
+                type: 'text',
+                text: JSON.stringify({definitions: resultDefinitions}),
             }]) as any,
         };
     }
