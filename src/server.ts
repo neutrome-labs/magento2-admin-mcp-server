@@ -1,7 +1,10 @@
 import axios from 'axios';
 import https from 'https'; // Import https module
+import express from 'express';
+import cors from 'cors';
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { z } from "zod";
 import { fetchMagentoApiEnvironment, fetchMagentoApiSchema, MagentoApiSchema } from './swagger.js'; // Added .js extension
 import { callMagentoApi, CallApiParams } from './tools.js'; // Added .js extension and CallApiParams import
@@ -334,7 +337,73 @@ server.tool(
         method: params.method.toLowerCase() as CallApiParams['method'], // Ensure method is lowercase
     }),
 );
+// Check if SSE mode is enabled
+const SSE_ENABLED = true; process.env.SSE === 'true';
 
-// Start receiving messages on stdin and sending messages on stdout
-const transport = new StdioServerTransport();
-await server.connect(transport);
+if (SSE_ENABLED) {
+    console.log('Starting server in SSE mode');
+    const app = express();
+    const PORT = process.env.SSE_PORT || 3000;
+    
+    // Enable CORS
+    app.use(cors());
+    app.use(express.json());
+    
+    // to support multiple simultaneous connections
+    const transports: {[sessionId: string]: SSEServerTransport} = {};
+    
+    // POST endpoint for clients to send messages
+    app.post('/messages', async (req, res) => {
+        console.log("Message request received");
+        const sessionId = req.query.sessionId;
+        
+        if (typeof sessionId !== 'string') {
+            res.status(400).send({ message: "Bad session id" });
+            return;
+        }
+        
+        const transport = transports[sessionId];
+        if (!transport) {
+            res.status(400).send({ message: "No transport found for sessionId" });
+            return;
+        }
+        
+        await transport.handlePostMessage(req, res, req.body);
+    });
+    
+    // SSE connection endpoint
+    app.get('/connect', async (req, res) => {
+        console.log('Client connecting to SSE');
+        
+        // Create new transport for this connection
+        const transport = new SSEServerTransport('/messages', res);
+        console.log(`New transport created with session id: ${transport.sessionId}`);
+        
+        transports[transport.sessionId] = transport;
+        
+        // Clean up on connection close
+        res.on('close', () => {
+            console.log(`SSE connection closed for session ${transport.sessionId}`);
+            delete transports[transport.sessionId];
+        });
+        
+        // Connect the transport to our MCP server
+        await server.connect(transport);
+        
+        // Send welcome message
+        await transport.send({
+            jsonrpc: "2.0",
+            method: "sse/connection",
+            params: { message: "Magento MCP server connected" }
+        });
+    });
+    
+    app.listen(PORT, () => {
+        console.log(`Magento MCP SSE server listening on port ${PORT}`);
+    });
+} else {
+    // Default stdio transport when SSE is not enabled
+    const stdioTransport = new StdioServerTransport();
+    await server.connect(stdioTransport);
+    console.warn("Connected with stdio transport");
+}
