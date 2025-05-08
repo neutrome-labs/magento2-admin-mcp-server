@@ -1,0 +1,16 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build the Docker image
+      run: docker build . --file /open-webui-mcpo/Dockerfile --tag magento2-admin-mcp-server-v2:$(date +%s) --tag magento2-admin-mcp-server-v2:$(date +%s)
