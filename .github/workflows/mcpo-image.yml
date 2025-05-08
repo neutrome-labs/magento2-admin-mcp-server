@@ -13,4 +13,4 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
-      run: docker build . --file ./open-webui-mcpo/Dockerfile --tag ghcr.io/neutrome-labs/magento2-admin-mcp-server-v2:$(date +%s) && docker push ghcr.io/neutrome-labs/magento2-admin-mcp-server-v2:$(date +%s) 
+      run: docker build . --file ./open-webui-mcpo/Dockerfile --tag magento2-admin-mcp-server-v2:$(date +%s) && docker push ghcr.io/neutrome-labs/magento2-admin-mcp-server-v2:$(date +%s) 
