@@ -179,65 +179,141 @@ function registerTools(server: McpServer, axiosInstance: any, schema: MagentoApi
             }
         }
 
-        server.tool(name, description, toolSignature, async (params: Record<string, any>) => {
-            const callParams: CallApiParams = {
-                method: method.toLowerCase() as CallApiParams['method'],
-                storeCode: params.storeCode ?? null,
-                path: path,
-                query: null,
-                body: null,
-            };
-            const { storeCode, ...restParams } = params;
-
-            if (method.toLowerCase() === 'get' || method.toLowerCase() === 'delete') {
-                const queryString = new URLSearchParams(restParams).toString();
-                callParams.query = queryString.length > 0 ? `?${queryString}` : null;
-            } else {
-                const pathParamNames = (path.match(/{([^}]+)}/g) || []).map(p => p.replace(/{|}/g, ''));
-                const pathParams: Record<string, any> = {};
-                const otherParams: Record<string, any> = {};
-                for (const key in restParams) {
-                    if (pathParamNames.includes(key)) {
-                        pathParams[key] = restParams[key];
-                    } else {
-                        otherParams[key] = restParams[key];
-                    }
+        // Determine if this is a read-only or destructive operation
+        const isReadOnly = method.toLowerCase() === 'get';
+        const isDestructive = method.toLowerCase() === 'delete';
+        
+        server.registerTool(
+            name,
+            {
+                description,
+                inputSchema: toolSignature,
+                annotations: {
+                    title: name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+                    readOnlyHint: isReadOnly,
+                    destructiveHint: isDestructive,
+                    idempotentHint: isReadOnly || method.toLowerCase() === 'put',
+                    openWorldHint: true // Interacts with external Magento API
                 }
-                const queryString = new URLSearchParams(pathParams).toString();
-                callParams.query = queryString.length > 0 ? `?${queryString}` : null;
-                callParams.body = otherParams;
-            }
+            },
+            async (params: Record<string, any>) => {
+                const callParams: CallApiParams = {
+                    method: method.toLowerCase() as CallApiParams['method'],
+                    storeCode: params.storeCode ?? null,
+                    path: path,
+                    query: null,
+                    body: null,
+                };
+                const { storeCode, ...restParams } = params;
 
-            return await callMagentoApi(axiosInstance, callParams);
-        });
+                if (method.toLowerCase() === 'get' || method.toLowerCase() === 'delete') {
+                    const queryString = new URLSearchParams(restParams).toString();
+                    callParams.query = queryString.length > 0 ? `?${queryString}` : null;
+                } else {
+                    const pathParamNames = (path.match(/{([^}]+)}/g) || []).map(p => p.replace(/{|}/g, ''));
+                    const pathParams: Record<string, any> = {};
+                    const otherParams: Record<string, any> = {};
+                    for (const key in restParams) {
+                        if (pathParamNames.includes(key)) {
+                            pathParams[key] = restParams[key];
+                        } else {
+                            otherParams[key] = restParams[key];
+                        }
+                    }
+                    const queryString = new URLSearchParams(pathParams).toString();
+                    callParams.query = queryString.length > 0 ? `?${queryString}` : null;
+                    callParams.body = otherParams;
+                }
+
+                return await callMagentoApi(axiosInstance, callParams);
+            }
+        );
         added += 1;
     }
 
     // Generic tools
-    server.tool("lvl0_info__get_deployment_info", "Get deployment information", {}, async () => ({
-        content: [{ type: 'text', text: JSON.stringify({ environment, websites: environment.websites, stores: { storeGroups: environment.storeGroups, storeViews: environment.storeViews } }) }]
-    }));
+    server.registerTool(
+        "lvl0_info__get_deployment_info",
+        {
+            title: "Get Deployment Info",
+            description: "Get deployment information including websites, store groups, and store views",
+            annotations: {
+                title: "Get Deployment Info",
+                readOnlyHint: true,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: true
+            }
+        },
+        async () => ({
+            content: [{ type: 'text', text: JSON.stringify({ environment, websites: environment.websites, stores: { storeGroups: environment.storeGroups, storeViews: environment.storeViews } }) }]
+        })
+    );
 
-    server.tool("lvl1_rest__get_api_definitions", "Get OpenAPI schema definitions", {}, () => ({
-        content: [{ type: 'text', text: JSON.stringify({ swagger: schema.swagger, info: schema.info, host: schema.host, basePath: schema.basePath, schemes: schema.schemes, definitions: schema.definitions, paths: {} }) }]
-    }));
+    server.registerTool(
+        "lvl1_rest__get_api_definitions",
+        {
+            title: "Get API Definitions",
+            description: "Get OpenAPI schema definitions including swagger info, host, basePath, schemes, and type definitions",
+            annotations: {
+                title: "Get API Definitions",
+                readOnlyHint: true,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: false // Returns cached schema data
+            }
+        },
+        () => ({
+            content: [{ type: 'text', text: JSON.stringify({ swagger: schema.swagger, info: schema.info, host: schema.host, basePath: schema.basePath, schemes: schema.schemes, definitions: schema.definitions, paths: {} }) }]
+        })
+    );
 
-    server.tool("lvl1_rest__search_api_methods", "Search OpenAPI schema for API methods", { search: z.nullable(z.string()) }, ({ search }) => {
-        let paths = schema.paths;
-        if (search) {
-            const terms = search.toLowerCase().split(' ').filter(t => t.length > 0);
-            paths = Object.fromEntries(Object.entries(paths).filter(([k]) => terms.some(t => k.toLowerCase().includes(t))));
+    server.registerTool(
+        "lvl1_rest__search_api_methods",
+        {
+            title: "Search API Methods",
+            description: "Search OpenAPI schema for API methods by keyword. Returns matching API paths and their details.",
+            inputSchema: { search: z.nullable(z.string()).describe('Search terms to filter API methods (space-separated)') },
+            annotations: {
+                title: "Search API Methods",
+                readOnlyHint: true,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: false // Searches cached schema data
+            }
+        },
+        ({ search }) => {
+            let paths = schema.paths;
+            if (search) {
+                const terms = search.toLowerCase().split(' ').filter(t => t.length > 0);
+                paths = Object.fromEntries(Object.entries(paths).filter(([k]) => terms.some(t => k.toLowerCase().includes(t))));
+            }
+            return { content: Object.entries(paths).map(([path, item]) => ({ type: 'text', text: JSON.stringify({ path, ...item }) })) as any };
         }
-        return { content: Object.entries(paths).map(([path, item]) => ({ type: 'text', text: JSON.stringify({ path, ...item }) })) as any };
-    });
+    );
 
-    server.tool("lvl1_rest__call_api_method", "Call any REST API method", {
-        method: z.enum(['GET', 'get', 'POST', 'post', 'PUT', 'put', 'DELETE', 'delete']),
-        storeCode: z.nullable(z.string()).default("all"),
-        path: z.string(),
-        query: z.nullable(z.string()).optional(),
-        body: z.nullable(z.record(z.any())).optional(),
-    }, async (params: any) => await callMagentoApi(axiosInstance, { ...params, method: params.method.toLowerCase() }));
+    server.registerTool(
+        "lvl1_rest__call_api_method",
+        {
+            title: "Call REST API Method",
+            description: "Call any Magento 2 REST API method directly. Supports GET, POST, PUT, and DELETE operations.",
+            inputSchema: {
+                method: z.enum(['GET', 'get', 'POST', 'post', 'PUT', 'put', 'DELETE', 'delete']).describe('HTTP method'),
+                storeCode: z.nullable(z.string()).default("all").describe('Store code (e.g. default, all)'),
+                path: z.string().describe('API path (e.g. /V1/products)'),
+                query: z.nullable(z.string()).optional().describe('Query string parameters'),
+                body: z.nullable(z.record(z.string(), z.any())).optional().describe('Request body for POST/PUT requests'),
+            },
+            annotations: {
+                title: "Call REST API Method",
+                readOnlyHint: false, // Can perform any operation
+                destructiveHint: true, // DELETE operations are destructive
+                idempotentHint: false, // Depends on the method used
+                openWorldHint: true // Interacts with external Magento API
+            }
+        },
+        async (params: any) => await callMagentoApi(axiosInstance, { ...params, method: params.method.toLowerCase() })
+    );
 
     log('info', 'Registered tools', { featuredApis: added, genericTools: 4, total: added + 4 });
 }
@@ -648,7 +724,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
         res.status(401).json({
             jsonrpc: '2.0',
             error: { code: -32001, message: 'Unauthorized' },
-            id: req.body?.id ?? null
+            id: (req.body as any)?.id ?? null
         });
         return;
     }
@@ -690,7 +766,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
         res.status(500).json({
             jsonrpc: '2.0',
             error: { code: -32603, message: error.message },
-            id: req.body?.id ?? null
+            id: (req.body as any)?.id ?? null
         });
     }
 });
@@ -717,7 +793,7 @@ app.delete('/mcp', async (req: Request, res: Response) => {
 // Health & Info Endpoints
 // ============================================================================
 
-app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/health', (_req, res) => {res.json({ status: 'ok' });});
 
 app.get('/', (_req, res) => {
     res.json({
