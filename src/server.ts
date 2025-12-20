@@ -525,9 +525,11 @@ app.post('/authorize', async (req: Request, res: Response) => {
         log('info', 'Magento credentials validated successfully');
     } catch (error: any) {
         log('error', 'Magento validation failed', { error: error.message });
+        const client = registeredClients.get(client_id);
         const errorTemplate = loadTemplate('auth-error.html');
         const errorHtml = renderTemplate(errorTemplate, {
             MCP_TITLE,
+            CLIENT_NAME: client?.client_name || 'MCP Client',
             ERROR_MESSAGE: error.message
         });
         res.status(400).type('html').send(errorHtml);
