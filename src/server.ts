@@ -23,6 +23,7 @@ const MCP_TITLE = process.env.MCP_TITLE || 'Magento 2';
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const LOG_LEVEL = (process.env.LOG_LEVEL || 'info').toLowerCase();
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const OPENAI_APPS_CHALLENGE = process.env.OPENAI_APPS_CHALLENGE || 'demo-challenge-token';
 
 const LEVELS: Record<string, number> = { error: 0, warn: 1, info: 2, debug: 3 };
 function log(level: 'error' | 'warn' | 'info' | 'debug', ...args: any[]) {
@@ -299,6 +300,11 @@ app.use(express.urlencoded({ extended: true }));
 // ============================================================================
 // OAuth 2.0 Discovery Metadata (RFC 8414)
 // ============================================================================
+
+app.get('/.well-known/openai-apps-challenge', (req, res) => {
+    log('debug', 'OpenAI Apps challenge requested');
+    res.type('text/plain').send(OPENAI_APPS_CHALLENGE);
+});
 
 app.get('/.well-known/oauth-authorization-server', (_req, res) => {
     log('debug', 'OAuth metadata requested');
