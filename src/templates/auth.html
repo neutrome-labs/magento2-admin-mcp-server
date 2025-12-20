@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Connect to Magento · {{MCP_TITLE}}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0d0d0d;
+            --bg-secondary: #171717;
+            --bg-tertiary: #1e1e1e;
+            --bg-elevated: #262626;
+            --border-subtle: rgba(255,255,255,0.08);
+            --border-focus: #f26322;
+            --text-primary: #ececec;
+            --text-secondary: #9a9a9a;
+            --text-muted: #666666;
+            --accent-primary: #f26322;
+            --accent-glow: rgba(242, 99, 34, 0.15);
+            --accent-hover: #d9561e;
+            --error: #ef4444;
+            --surface-glow: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(242, 99, 34, 0.12), transparent);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Ambient glow effect */
+        .ambient-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60vh;
+            background: var(--surface-glow);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Subtle grid pattern */
+        .grid-pattern {
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+            mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black, transparent);
+        }
+
+        .main-container {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        /* Logo & Header */
+        .header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .logo {
+            width: 56px;
+            height: 56px;
+            background: var(--bg-elevated);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.25rem;
+            border: 1px solid var(--border-subtle);
+            box-shadow: 
+                0 0 0 1px rgba(255,255,255,0.04),
+                0 8px 40px rgba(0,0,0,0.4);
+        }
+
+        .logo svg {
+            width: 28px;
+            height: 28px;
+            color: var(--accent-primary);
+        }
+
+        .header h1 {
+            font-size: 1.625rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 0.9375rem;
+            font-weight: 300;
+        }
+
+        /* Auth Card */
+        .auth-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            overflow: hidden;
+            box-shadow: 
+                0 0 0 1px rgba(255,255,255,0.04),
+                0 20px 70px rgba(0,0,0,0.5);
+        }
+
+        /* Client Badge */
+        .client-badge {
+            padding: 1rem 1.5rem;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .client-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-glow);
+            border: 1px solid rgba(242, 99, 34, 0.3);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .client-icon svg {
+            width: 16px;
+            height: 16px;
+            color: var(--accent-primary);
+        }
+
+        .client-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .client-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.125rem;
+        }
+
+        .client-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Form Styles */
+        .form-content {
+            padding: 1.5rem;
+        }
+
+        .field {
+            margin-bottom: 1.25rem;
+        }
+
+        .field:last-of-type {
+            margin-bottom: 1.5rem;
+        }
+
+        .field label {
+            display: block;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 0.8125rem 1rem;
+            padding-left: 2.75rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+        }
+
+        .input-wrapper input::placeholder {
+            color: var(--text-muted);
+            font-family: 'Sora', sans-serif;
+        }
+
+        .input-wrapper input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            background: var(--bg-tertiary);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+            transition: color 0.2s ease;
+        }
+
+        .input-wrapper:focus-within .input-icon {
+            color: var(--accent-primary);
+        }
+
+        .input-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .field-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            padding-left: 0.25rem;
+        }
+
+        /* Submit Button */
+        .submit-btn {
+            width: 100%;
+            padding: 0.9375rem 1.5rem;
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Sora', sans-serif;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .submit-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(242, 99, 34, 0.3);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn svg {
+            width: 18px;
+            height: 18px;
+            transition: transform 0.2s ease;
+        }
+
+        .submit-btn:hover svg {
+            transform: translateX(3px);
+        }
+
+        /* Security Note */
+        .security-note {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.625rem;
+            padding: 0.875rem 1rem;
+            background: rgba(242, 99, 34, 0.06);
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .security-note svg {
+            width: 14px;
+            height: 14px;
+            color: var(--accent-primary);
+            flex-shrink: 0;
+            margin-top: 0.125rem;
+        }
+
+        .security-note p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Footer */
+        .footer {
+            position: relative;
+            z-index: 1;
+            padding: 1.5rem 2rem;
+            text-align: center;
+        }
+
+        .footer p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .footer a:hover {
+            color: var(--accent-primary);
+        }
+
+        /* Error State */
+        .input-wrapper input.error {
+            border-color: var(--error);
+        }
+
+        .input-wrapper input.error:focus {
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+        }
+
+        /* Loading State */
+        .submit-btn.loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .submit-btn.loading svg {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 480px) {
+            .main-container {
+                padding: 1.5rem 1rem;
+            }
+            
+            .header h1 {
+                font-size: 1.375rem;
+            }
+            
+            .form-content {
+                padding: 1.25rem;
+            }
+        }
+
+        /* Toggle Password Visibility */
+        .toggle-visibility {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s ease;
+        }
+
+        .toggle-visibility:hover {
+            color: var(--text-secondary);
+        }
+
+        .toggle-visibility svg {
+            width: 16px;
+            height: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-glow"></div>
+    <div class="grid-pattern"></div>
+
+    <main class="main-container">
+        <header class="header">
+            <div class="logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <path d="M16 10a4 4 0 01-8 0"/>
+                </svg>
+            </div>
+            <h1>Connect to Magento</h1>
+            <p>Securely link your store to enable AI assistance</p>
+        </header>
+
+        <div class="auth-card">
+            <div class="client-badge">
+                <div class="client-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0110 0v4"/>
+                    </svg>
+                </div>
+                <div class="client-info">
+                    <div class="client-label">Requesting Access</div>
+                    <div class="client-name">{{CLIENT_NAME}}</div>
+                </div>
+            </div>
+
+            <form method="POST" action="/authorize" class="form-content" id="authForm">
+                <div class="field">
+                    <label for="baseUrl">Store URL</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="2" y1="12" x2="22" y2="12"/>
+                                <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+                            </svg>
+                        </span>
+                        <input 
+                            type="url" 
+                            id="baseUrl" 
+                            name="baseUrl" 
+                            placeholder="https://your-store.com" 
+                            required 
+                            autocomplete="url"
+                            spellcheck="false"
+                        />
+                    </div>
+                    <p class="field-hint">Your Magento 2 admin base URL</p>
+                </div>
+
+                <div class="field">
+                    <label for="magentoToken">Access Token</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                            </svg>
+                        </span>
+                        <input 
+                            type="password" 
+                            id="magentoToken" 
+                            name="magentoToken" 
+                            placeholder="Enter your integration token" 
+                            required 
+                            autocomplete="current-password"
+                        />
+                        <button type="button" class="toggle-visibility" onclick="togglePassword()">
+                            <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="field-hint">System → Integrations → Access Token</p>
+                </div>
+
+                <input type="hidden" name="client_id" value="{{CLIENT_ID}}" />
+                <input type="hidden" name="redirect_uri" value="{{REDIRECT_URI}}" />
+                <input type="hidden" name="code_challenge" value="{{CODE_CHALLENGE}}" />
+                <input type="hidden" name="code_challenge_method" value="{{CODE_CHALLENGE_METHOD}}" />
+                <input type="hidden" name="state" value="{{STATE}}" />
+                <input type="hidden" name="scope" value="{{SCOPE}}" />
+
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    <span>Authorize Connection</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </button>
+            </form>
+
+            <div class="security-note">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <p>Your credentials are transmitted securely and used only to connect to your Magento store. We never store your token in plain text.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>Powered by <a href="https://github.com/neutrome-labs" target="_blank" rel="noopener">Neutrome Labs</a> · MCP Server v3.2.0</p>
+    </footer>
+
+    <script>
+        function togglePassword() {
+            const input = document.getElementById('magentoToken');
+            const icon = document.getElementById('eyeIcon');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+            } else {
+                input.type = 'password';
+                icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+            }
+        }
+
+        document.getElementById('authForm').addEventListener('submit', function(e) {
+            const btn = document.getElementById('submitBtn');
+            btn.classList.add('loading');
+            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="32"><animate attributeName="stroke-dashoffset" values="32;0" dur="1s" repeatCount="indefinite"/></circle></svg><span>Connecting...</span>';
+        });
+
+        // Reset button state when page is shown (handles back navigation from bfcache)
+        window.addEventListener('pageshow', function(e) {
+            const btn = document.getElementById('submitBtn');
+            btn.classList.remove('loading');
+            btn.innerHTML = '<span>Authorize Connection</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+        });
+
+        // Auto-focus first input
+        document.getElementById('baseUrl').focus();
+    </script>
+</body>
+</html>

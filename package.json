@@ -4,7 +4,7 @@
   "description": "MCP Server for Magento 2 Admin REST API",
   "scripts": {
     "start": "bun src/server.ts",
-    "build": "bun build src/server.ts --outdir ./dist --target bun",
+    "build": "bun build src/server.ts --outdir ./dist --target bun && cp -r src/templates dist/",
     "dev": "LOG_LEVEL=debug bun src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

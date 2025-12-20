@@ -6,6 +6,9 @@ import cors from 'cors';
 import { randomUUID } from 'node:crypto';
 import { z } from "zod";
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -13,6 +16,10 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 
 import { fetchMagentoApiEnvironment, fetchMagentoApiSchema, MagentoApiSchema, MagentoEnvironment } from './swagger.js';
 import { callMagentoApi, CallApiParams } from './tools.js';
+
+// ES module dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -35,6 +42,21 @@ function log(level: 'error' | 'warn' | 'info' | 'debug', ...args: any[]) {
         else if (level === 'warn') console.warn(prefix, ...args);
         else console.error(prefix, ...args);
     }
+}
+
+// Load HTML template
+function loadTemplate(templateName: string): string {
+    const templatePath = path.join(__dirname, 'templates', templateName);
+    return fs.readFileSync(templatePath, 'utf-8');
+}
+
+// Render template with variables
+function renderTemplate(template: string, variables: Record<string, string>): string {
+    let rendered = template;
+    for (const [key, value] of Object.entries(variables)) {
+        rendered = rendered.replace(new RegExp(`{{${key}}}`, 'g'), value ?? '');
+    }
+    return rendered;
 }
 
 // Parse featured APIs from env once
@@ -470,76 +492,18 @@ app.get('/authorize', (req: Request, res: Response) => {
         return;
     }
 
-    // Show authorization form
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-    <title>Connect to Magento - ${MCP_TITLE}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        * { box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            display: flex; justify-content: center; align-items: center; 
-            min-height: 100vh; margin: 0; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        .container {
-            background: white; padding: 2rem; border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            width: 100%; max-width: 420px;
-        }
-        h1 { margin: 0 0 0.5rem; font-size: 1.5rem; color: #333; }
-        .subtitle { color: #666; margin-bottom: 1.5rem; font-size: 0.9rem; }
-        .field { margin-bottom: 1rem; }
-        label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333; font-size: 0.9rem; }
-        input { 
-            width: 100%; padding: 0.75rem; border: 2px solid #e1e5eb; 
-            border-radius: 8px; font-size: 1rem; transition: border-color 0.2s;
-        }
-        input:focus { outline: none; border-color: #667eea; }
-        button { 
-            width: 100%; padding: 0.875rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; border: none; border-radius: 8px; 
-            font-size: 1rem; font-weight: 600; cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
-        .help { font-size: 0.8rem; color: #888; margin-top: 0.25rem; }
-        .client-info { background: #f8f9fa; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.8rem; color: #666; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🛒 Connect to Magento</h1>
-        <p class="subtitle">Enter your Magento store credentials to authorize access</p>
-        
-        <div class="client-info">
-            Authorizing: <strong>${client?.client_name || 'MCP Client'}</strong>
-        </div>
-        
-        <form method="POST" action="/authorize">
-            <div class="field">
-                <label for="baseUrl">Magento Store URL</label>
-                <input type="url" id="baseUrl" name="baseUrl" placeholder="https://your-store.com" required />
-                <div class="help">Your Magento 2 store base URL</div>
-            </div>
-            <div class="field">
-                <label for="magentoToken">Integration Access Token</label>
-                <input type="password" id="magentoToken" name="magentoToken" required />
-                <div class="help">From System → Integrations in Magento Admin</div>
-            </div>
-            <input type="hidden" name="client_id" value="${client_id || ''}" />
-            <input type="hidden" name="redirect_uri" value="${redirect_uri || ''}" />
-            <input type="hidden" name="code_challenge" value="${code_challenge || ''}" />
-            <input type="hidden" name="code_challenge_method" value="${code_challenge_method || ''}" />
-            <input type="hidden" name="state" value="${state || ''}" />
-            <input type="hidden" name="scope" value="${scope || ''}" />
-            <button type="submit">Authorize Access</button>
-        </form>
-    </div>
-</body>
-</html>`;
+    // Load and render the auth template
+    const template = loadTemplate('auth.html');
+    const html = renderTemplate(template, {
+        MCP_TITLE,
+        CLIENT_NAME: client?.client_name || 'MCP Client',
+        CLIENT_ID: client_id || '',
+        REDIRECT_URI: redirect_uri || '',
+        CODE_CHALLENGE: code_challenge || '',
+        CODE_CHALLENGE_METHOD: code_challenge_method || '',
+        STATE: state || '',
+        SCOPE: scope || ''
+    });
     
     res.type('html').send(html);
 });
@@ -561,13 +525,12 @@ app.post('/authorize', async (req: Request, res: Response) => {
         log('info', 'Magento credentials validated successfully');
     } catch (error: any) {
         log('error', 'Magento validation failed', { error: error.message });
-        res.status(400).send(`
-            <html><body style="font-family: sans-serif; padding: 2rem; text-align: center;">
-                <h1>❌ Connection Failed</h1>
-                <p>Could not connect to Magento: ${error.message}</p>
-                <p><a href="javascript:history.back()">Go back and try again</a></p>
-            </body></html>
-        `);
+        const errorTemplate = loadTemplate('auth-error.html');
+        const errorHtml = renderTemplate(errorTemplate, {
+            MCP_TITLE,
+            ERROR_MESSAGE: error.message
+        });
+        res.status(400).type('html').send(errorHtml);
         return;
     }
     
@@ -737,7 +700,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
         
         const server = new McpServer({
             name: `${MCP_TITLE} (${tokenData.magentoBaseUrl})`,
-            version: "2.2.0"
+            version: "3.2.0"
         });
         
         registerTools(server, axiosInstance, schema, environment);
@@ -798,7 +761,7 @@ app.get('/health', (_req, res) => {res.json({ status: 'ok' });});
 app.get('/', (_req, res) => {
     res.json({
         name: MCP_TITLE,
-        version: '2.2.0',
+        version: '3.2.0',
         mcp_endpoint: '/mcp',
         oauth: {
             authorization_endpoint: '/authorize',
@@ -816,7 +779,7 @@ app.get('/', (_req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════════════════╗
-║                  ${MCP_TITLE} MCP Server v2.2.0                    
+║                  ${MCP_TITLE} MCP Server v3.2.0                    
 ╠═══════════════════════════════════════════════════════════════════╣
 ║                                                                   
 ║  MCP Endpoint:     ${BASE_URL}/mcp                     
