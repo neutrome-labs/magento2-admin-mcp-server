@@ -1,11 +1,10 @@
 {
   "name": "magento2-admin-mcp-server",
-  "version": "2.0.0",
-  "type": "module",
+  "version": "3.0.0",
   "description": "MCP Server for Magento 2 Admin REST API",
   "scripts": {
     "start": "bun src/server.ts",
-    "build": "bun build src/server.ts --outdir ./dist",
+    "build": "bun build src/server.ts --outdir ./dist --target bun",
     "dev": "LOG_LEVEL=debug bun src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
