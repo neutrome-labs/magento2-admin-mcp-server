@@ -1,23 +1,28 @@
 {
-  "name": "magento2-admin-mcp-server-v2",
-  "version": "1.0.0",
+  "name": "magento2-admin-mcp-server",
+  "version": "2.0.0",
   "type": "module",
+  "description": "MCP Server for Magento 2 Admin REST API",
   "scripts": {
+    "start": "bun src/server.ts",
+    "build": "bun build src/server.ts --outdir ./dist",
+    "dev": "LOG_LEVEL=debug bun src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "Neutrome Labs",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.2",
     "@types/node": "^22.15.2",
     "axios": "^1.9.0",
+    "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
-    "express-cors": "^0.0.3"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "typescript": "^5.5.4",
-    "@types/express": "^5.0.1"
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.1",
+    "typescript": "^5.5.4"
   }
 }
