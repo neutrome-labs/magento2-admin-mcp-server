@@ -31,6 +31,7 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 const LOG_LEVEL = (process.env.LOG_LEVEL || 'info').toLowerCase();
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const OPENAI_APPS_CHALLENGE = process.env.OPENAI_APPS_CHALLENGE || 'demo-challenge-token';
+const MAX_RESPONSE_TOKENS = parseInt(process.env.MAX_RESPONSE_TOKENS || '10000', 10);
 
 const LEVELS: Record<string, number> = { error: 0, warn: 1, info: 2, debug: 3 };
 function log(level: 'error' | 'warn' | 'info' | 'debug', ...args: any[]) {
@@ -325,6 +326,7 @@ function registerTools(server: McpServer, axiosInstance: any, schema: MagentoApi
                 path: z.string().describe('API path (e.g. /V1/products)'),
                 query: z.nullable(z.string()).optional().describe('Query string parameters'),
                 body: z.nullable(z.record(z.string(), z.any())).optional().describe('Request body for POST/PUT requests'),
+                allowLongResponse: z.boolean().default(false).describe('Set to true to allow responses exceeding the token limit. Use with caution as large responses may impact performance.'),
             },
             annotations: {
                 title: "Call REST API Method",
@@ -334,7 +336,27 @@ function registerTools(server: McpServer, axiosInstance: any, schema: MagentoApi
                 openWorldHint: true // Interacts with external Magento API
             }
         },
-        async (params: any) => await callMagentoApi(axiosInstance, { ...params, method: params.method.toLowerCase() })
+        async (params: any) => {
+            const { allowLongResponse, ...apiParams } = params;
+            const result = await callMagentoApi(axiosInstance, { ...apiParams, method: apiParams.method.toLowerCase() });
+            
+            // Check response length and apply guard if needed
+            if (!allowLongResponse && result.content && result.content.length > 0) {
+                const responseText = result.content.map((c: any) => c.text || '').join('');
+                const responseLength = responseText.length;
+                
+                if (responseLength > MAX_RESPONSE_TOKENS) {
+                    const trimmedResponse = responseText.substring(0, Math.floor(MAX_RESPONSE_TOKENS * 0.3));
+                    const warningMessage = `⚠️ INCOMPLETE RESPONSE - Response length (${responseLength} characters) exceeds the ${MAX_RESPONSE_TOKENS} threshold.\n\nTo get the full response, you can either:\n1. Retry with different parameters to request less data at a time (e.g., add pagination, filters, or limit fields)\n2. Set allowLongResponse = true and retry the same request\n\n--- TRUNCATED RESPONSE (first ${Math.floor(MAX_RESPONSE_TOKENS * 0.3)} chars) ---\n${trimmedResponse}\n--- END OF TRUNCATED RESPONSE ---`;
+                    
+                    return {
+                        content: [{ type: 'text', text: warningMessage }]
+                    };
+                }
+            }
+            
+            return result;
+        }
     );
 
     log('info', 'Registered tools', { featuredApis: added, genericTools: 4, total: added + 4 });

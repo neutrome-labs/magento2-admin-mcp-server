@@ -6,16 +6,13 @@ WORKDIR /app
 
 # Copy package files and install Node.js dependencies (including typescript devDependency)
 COPY package*.json ./
-RUN npm install
-
-# Copy tsconfig.json
-COPY tsconfig.json ./
+RUN bun install
 
 # Copy the application source code from the src directory
 COPY src ./src
 
-# Compile TypeScript to JavaScript using the local install
-RUN npx tsc --project tsconfig.json
+# Compile the TypeScript code to JavaScript
+RUN bun run build
 
 # Copy the configuration file
 COPY open-webui-mcpo/config.json ./
