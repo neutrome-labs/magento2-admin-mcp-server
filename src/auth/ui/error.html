@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authorization Error</title>
+    <style>
+        :root { --bg: #0f172a; --surface: #1e293b; --border: #334155;
+                --text: #f1f5f9; --muted: #94a3b8;
+                --error-bg: #7f1d1d; --error-text: #fca5a5; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg); color: var(--text);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; padding: 1rem;
+        }
+        .card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 2rem; width: 100%; max-width: 420px;
+            text-align: center;
+        }
+        h1 { font-size: 1.25rem; margin-bottom: .5rem; color: var(--error-text); }
+        .message { color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; }
+        .detail {
+            background: var(--error-bg); color: var(--error-text);
+            padding: .65rem .85rem; border-radius: 8px;
+            font-size: .82rem; text-align: left; word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>&#x26A0;&#xFE0F; Authorization Error</h1>
+        <p class="message">Something went wrong during the authorization process.</p>
+        <div class="detail">{{ error_message }}</div>
+    </div>
+</body>
+</html>

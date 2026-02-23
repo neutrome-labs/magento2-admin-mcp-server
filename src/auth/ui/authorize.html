@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+    <title>Connect to Magento 2</title>
+    <style>
+        :root {
+            --bg: #0f172a; --surface: #1e293b; --border: #334155;
+            --text: #f1f5f9; --muted: #94a3b8;
+            --accent: #f97316; --accent-hover: #fb923c;
+            --error-bg: #7f1d1d; --error-text: #fca5a5;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg); color: var(--text);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; padding: 1rem;
+        }
+        .card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 2rem; width: 100%; max-width: 420px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,.5);
+        }
+        h1 { font-size: 1.25rem; margin-bottom: .25rem; }
+        .subtitle { color: var(--muted); font-size: .85rem; margin-bottom: 1.5rem; }
+        label { display: block; font-size: .8rem; font-weight: 600; margin-bottom: .35rem; color: var(--muted); }
+        input {
+            width: 100%; padding: .65rem .75rem; font-size: .9rem;
+            background: var(--bg); color: var(--text);
+            border: 1px solid var(--border); border-radius: 8px;
+            outline: none; transition: border-color .15s;
+        }
+        input:focus { border-color: var(--accent); }
+        .field + .field { margin-top: 1rem; }
+        .hint { font-size: .75rem; color: var(--muted); margin-top: .25rem; }
+        .error-box {
+            background: var(--error-bg); color: var(--error-text);
+            padding: .65rem .85rem; border-radius: 8px;
+            font-size: .82rem; margin-bottom: 1rem; display: none;
+        }
+        button {
+            width: 100%; margin-top: 1.5rem; padding: .7rem;
+            font-size: .95rem; font-weight: 600;
+            background: var(--accent); color: #fff;
+            border: none; border-radius: 8px;
+            cursor: pointer; transition: background .15s;
+        }
+        button:hover { background: var(--accent-hover); }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+        .spinner { display: none; }
+        .loading .spinner { display: inline-block; margin-right: .4rem; }
+        .loading .btn-text { display: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>&#x1F50C; Connect to Magento 2</h1>
+        <p class="subtitle">Enter your Magento admin credentials to authorize this MCP session.</p>
+
+        <div id="error-box" class="error-box"></div>
+
+        <form id="auth-form" method="POST">
+            <input type="hidden" name="client_id" value="{{ client_id }}">
+            <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+            <input type="hidden" name="state" value="{{ state }}">
+            <input type="hidden" name="code_challenge" value="{{ code_challenge }}">
+            <input type="hidden" name="scopes" value="{{ scopes }}">
+
+            <div class="field">
+                <label for="magento_url">Magento Base URL</label>
+                <input id="magento_url" name="magento_url" type="url"
+                       placeholder="https://your-store.com" required
+                       autocomplete="url">
+                <p class="hint">The base URL of your Magento 2 instance (no trailing slash)</p>
+            </div>
+
+            <div class="field">
+                <label for="magento_token">Admin Bearer Token</label>
+                <input id="magento_token" name="magento_token" type="password"
+                       placeholder="Paste your Magento admin token" required
+                       autocomplete="off">
+                <p class="hint">System &rarr; Integrations &rarr; your integration &rarr; Access Token</p>
+            </div>
+
+            <button type="submit" id="submit-btn">
+                <span class="spinner">&#x23F3;</span>
+                <span class="btn-text">Authorize</span>
+            </button>
+        </form>
+    </div>
+
+    <script>
+    (function() {
+        const form = document.getElementById('auth-form');
+        const btn  = document.getElementById('submit-btn');
+        const err  = document.getElementById('error-box');
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            err.style.display = 'none';
+            btn.disabled = true;
+            btn.classList.add('loading');
+
+            const data = new FormData(form);
+            fetch(form.action || window.location.href, {
+                method: 'POST',
+                body: data,
+            }).then(function(resp) {
+                if (resp.redirected) {
+                    window.location.href = resp.url;
+                    return;
+                }
+                return resp.json().then(function(body) {
+                    throw new Error(body.error || 'Authorization failed');
+                });
+            }).catch(function(ex) {
+                err.textContent = ex.message;
+                err.style.display = 'block';
+                btn.disabled = false;
+                btn.classList.remove('loading');
+            });
+        });
+    })();
+    </script>
+</body>
+</html>
