@@ -21,6 +21,7 @@ from mcp.server.auth.provider import (
     AuthorizationParams,
     RefreshToken,
 )
+from mcp.server.auth.settings import ClientRegistrationOptions
 from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse
@@ -50,7 +51,7 @@ class StatelessOAuthProvider(OAuthProvider):
         base = settings.effective_base_url
         super().__init__(
             base_url=base,
-            issuer_url=base,
+            client_registration_options=ClientRegistrationOptions(enabled=True),
         )
         self._settings = settings
         self._engine = TokenEngine(settings.aes_secret)
@@ -100,7 +101,7 @@ class StatelessOAuthProvider(OAuthProvider):
             response_types=payload.get("response_types", ["code"]),
             scope=payload.get("scope"),
             token_endpoint_auth_method=payload.get(
-                "token_endpoint_auth_method", "client_secret_post"
+                "token_endpoint_auth_method", "none"
             ),
         )
 
@@ -109,10 +110,20 @@ class StatelessOAuthProvider(OAuthProvider):
 
         The MCP SDK will use the mutated ``client_info.client_id`` for all
         subsequent operations — so the JWT *is* the persistent registration.
+
+        Respects the client's requested ``token_endpoint_auth_method``.
+        Public clients (method ``"none"``) receive no secret — this ensures
+        they send ``client_id`` in the form body (required by the SDK's
+        ``ClientAuthenticator``) instead of via ``Authorization: Basic``.
         """
-        raw_secret = hashlib.sha256(
-            (self._settings.aes_secret + str(time.time())).encode()
-        ).hexdigest()
+        auth_method = client_info.token_endpoint_auth_method or "none"
+
+        # Only generate a secret when the client actually needs one
+        raw_secret: str | None = None
+        if auth_method in ("client_secret_post", "client_secret_basic"):
+            raw_secret = hashlib.sha256(
+                (self._settings.aes_secret + str(time.time())).encode()
+            ).hexdigest()
 
         meta: dict[str, Any] = {
             "redirect_uris": [str(u) for u in (client_info.redirect_uris or [])],
@@ -121,16 +132,16 @@ class StatelessOAuthProvider(OAuthProvider):
             or ["authorization_code", "refresh_token"],
             "response_types": client_info.response_types or ["code"],
             "scope": client_info.scope,
-            "token_endpoint_auth_method": (
-                client_info.token_endpoint_auth_method or "client_secret_post"
-            ),
-            "client_secret": raw_secret,
+            "token_endpoint_auth_method": auth_method,
         }
+        if raw_secret:
+            meta["client_secret"] = raw_secret
 
         client_id_jwt = self._engine.create_client_token(meta)
         # Mutate in-place so the SDK picks up the JWT
         client_info.client_id = client_id_jwt
-        client_info.client_secret = raw_secret
+        if raw_secret:
+            client_info.client_secret = raw_secret
 
     # ── Authorization flow ──────────────────────────────────────────────
 

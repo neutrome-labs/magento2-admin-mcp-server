@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy"
-          content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+          content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action *; connect-src *">
     <title>Connect to Magento 2</title>
     <style>
         :root {
@@ -97,32 +97,13 @@
     (function() {
         const form = document.getElementById('auth-form');
         const btn  = document.getElementById('submit-btn');
-        const err  = document.getElementById('error-box');
 
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            err.style.display = 'none';
+        form.addEventListener('submit', function() {
+            /* Let the browser handle the POST natively.
+               The server responds with a 302 redirect on success (followed by the
+               browser without CORS/CSP issues) or an HTML error page on failure. */
             btn.disabled = true;
             btn.classList.add('loading');
-
-            const data = new FormData(form);
-            fetch(form.action || window.location.href, {
-                method: 'POST',
-                body: data,
-            }).then(function(resp) {
-                if (resp.redirected) {
-                    window.location.href = resp.url;
-                    return;
-                }
-                return resp.json().then(function(body) {
-                    throw new Error(body.error || 'Authorization failed');
-                });
-            }).catch(function(ex) {
-                err.textContent = ex.message;
-                err.style.display = 'block';
-                btn.disabled = false;
-                btn.classList.remove('loading');
-            });
         });
     })();
     </script>

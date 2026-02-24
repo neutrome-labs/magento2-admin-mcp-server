@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "magento2-admin-mcp-server"
-version = "1.0.0"
-description = "Magento 2 Admin MCP Server — stateless OAuth 2.0 token proxy over FastMCP v3"
+version = "2.0.0"
+description = "Magento 2 Admin MCP Server — single-tool workerd sandbox with typed API client"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.12"
