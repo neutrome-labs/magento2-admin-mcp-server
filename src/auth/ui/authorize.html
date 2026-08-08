@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; style-src 'unsafe-inline' https://unpkg.com; script-src 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net; form-action *; connect-src *">
+    <title>Connect to Magento 2</title>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style type="text/tailwindcss">
+        @theme {
+            --color-magento: #f26322;
+            --color-magento-dark: #d9531e;
+            --color-magento-light: #fff0e8;
+        }
+        
+        body {
+            background-color: #f8fafc;
+            background-image: 
+                radial-gradient(at 100% 0%, rgba(242, 99, 34, 0.08) 0px, transparent 50%),
+                radial-gradient(at 0% 100%, rgba(242, 99, 34, 0.05) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        .ultra-card {
+            background: #ffffff;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(242, 99, 34, 0.05);
+        }
+
+        .input-field {
+            @apply w-full bg-slate-50/50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-4 focus:ring-magento/10 focus:border-magento block py-3.5 pr-4 pl-11 transition-all duration-75 outline-none placeholder-slate-400;
+        }
+
+        .btn-primary {
+            @apply w-full text-white bg-magento hover:bg-magento-dark focus:ring-4 focus:outline-none focus:ring-magento/20 font-semibold rounded-xl text-sm px-5 py-4 text-center transition-all duration-75 shadow-lg shadow-magento/20 disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center gap-2;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 text-slate-900 antialiased selection:bg-magento/20 selection:text-magento-dark" x-data="{ loading: false }">
+    
+    <div class="w-full max-w-md z-10">
+        
+        <div class="ultra-card rounded-3xl p-8 sm:p-10 relative overflow-hidden">
+            <!-- Top accent -->
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-magento"></div>
+
+            <div class="text-center mb-10">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-magento-light text-magento mb-6">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"></path>
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight text-slate-900 mb-2">Connect to Magento</h1>
+                <p class="text-sm text-slate-500">Authorize this MCP session to access your store</p>
+            </div>
+
+            <form id="auth-form" method="POST" @submit="loading = true" class="space-y-6">
+                <input type="hidden" name="client_id" value="{{ client_id }}">
+                <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+                <input type="hidden" name="state" value="{{ state }}">
+                <input type="hidden" name="code_challenge" value="{{ code_challenge }}">
+                <input type="hidden" name="scopes" value="{{ scopes }}">
+
+                <div class="space-y-2 group">
+                    <label for="magento_url" class="block text-sm font-semibold text-slate-700 group-focus-within:text-magento transition-colors duration-75">Store URL</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400 group-focus-within:text-magento transition-colors duration-75">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                        </div>
+                        <input id="magento_url" name="magento_url" type="url"
+                               class="input-field"
+                               placeholder="https://your-store.com" required
+                               autocomplete="url">
+                    </div>
+                </div>
+
+                <div class="space-y-2 group">
+                    <div class="flex justify-between items-center">
+                        <label for="magento_token" class="block text-sm font-semibold text-slate-700 group-focus-within:text-magento transition-colors duration-75">Admin Token</label>
+                        <span class="text-[11px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">Bearer</span>
+                    </div>
+                    <div class="relative" x-data="{ showToken: false }">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-400 group-focus-within:text-magento transition-colors duration-75">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                        </div>
+                        <input id="magento_token" name="magento_token" :type="showToken ? 'text' : 'password'"
+                               class="input-field pr-12 font-mono text-sm"
+                               placeholder="Paste access token" required
+                               autocomplete="off">
+                        <button type="button" @click="showToken = !showToken" class="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 hover:text-magento focus:outline-none transition-colors duration-75">
+                            <svg x-show="!showToken" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                            <svg x-show="showToken" style="display: none;" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
+                        </button>
+                    </div>
+                    <p class="text-[13px] text-slate-500 mt-1.5">System &rarr; Integrations &rarr; Access Token</p>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" class="btn-primary" :disabled="loading">
+                        <svg x-show="loading" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="display: none;">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-text="loading ? 'Connecting...' : 'Authorize Connection'">Authorize Connection</span>
+                    </button>
+                </div>
+            </form>
+            
+            <div class="mt-8 text-center">
+                <p class="text-[13px] font-medium text-slate-400 flex items-center justify-center gap-1.5">
+                    <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    Secure MCP Protocol
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; style-src 'unsafe-inline' https://unpkg.com; script-src 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net; form-action *; connect-src *">
+    <title>Authorization Error</title>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style type="text/tailwindcss">
+        @theme {
+            --color-magento: #f26322;
+        }
+        
+        body {
+            background-color: #f8fafc;
+            background-image: 
+                radial-gradient(at 100% 0%, rgba(239, 68, 68, 0.05) 0px, transparent 50%),
+                radial-gradient(at 0% 100%, rgba(242, 99, 34, 0.03) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        .ultra-card {
+            background: #ffffff;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(239, 68, 68, 0.05);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 text-slate-900 antialiased selection:bg-red-100 selection:text-red-900">
+    
+    <div class="w-full max-w-md z-10" 
+         x-data="{ show: false }" 
+         x-init="setTimeout(() => show = true, 50)"
+         x-show="show"
+         x-transition:enter="transition ease-out duration-500"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         style="display: none;">
+        
+        <div class="ultra-card rounded-3xl p-8 sm:p-10 relative overflow-hidden text-center">
+            <!-- Top accent -->
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-red-500"></div>
+
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-red-50 text-red-500 mb-6">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+            </div>
+            
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900 mb-2">Authorization Error</h1>
+            <p class="text-sm text-slate-500 mb-8">Something went wrong during the authorization process.</p>
+            
+            <div class="bg-red-50 border border-red-100 text-red-800 p-4 rounded-xl text-sm text-left break-words font-mono">
+                {{ error_message }}
+            </div>
+            
+            <div class="mt-8">
+                <button onclick="window.history.back()" class="text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors flex items-center justify-center gap-2 mx-auto">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    Go Back
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
